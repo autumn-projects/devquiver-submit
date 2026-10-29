@@ -25,6 +25,10 @@ The submission is made on the user's behalf and is public. Treat the final click
 Ask the user which mode they want if they haven't said. Most sessions alternate: one autonomous pass, then one collaborative pass to clear what got stuck.
 
 **Autonomous pass (全自动轮)** — the user has said "run unattended" / "don't stop, just record blockers".
+- **Filter by status first, don't re-probe.** `next_directories` returns everything not yet submitted, including ones already recorded as `todo`/`drafting` with a blocker. Before working the list, call `list_submissions` with `status: ["todo", "drafting"]` for the page and treat any directory that already has a non-empty note as already probed. Only pick:
+  1. directories with **no record** for this page, and
+  2. recorded ones whose blocker **you can now clear yourself** because something changed since the note (e.g. the badge/link it waited for is now in the live HTML, the user has since allowed Google sign-in, the note says "retry after date X" and X has passed).
+  Don't retry `site-error` / `no-form` / `captcha` / `signup` / `email-code` blockers in an autonomous pass just to see if they still fail — leave them for the collaborative pass. A re-probe that ends in the same blocker is wasted work.
 - Submit everything you can finish yourself without asking before each final click.
 - Anything that needs a human (login wall you may not pass, CAPTCHA, email code, payment decision, a badge or link that must go on the user's site first) is **not a reason to stop the session**: record it as `drafting` with a note that says exactly what is needed and where, then move to the next directory.
 - Write notes so the collaborative pass can batch them: start with the blocker type, e.g. `卡点: Cloudflare 验证`, `卡点: 需登录`, `卡点: 需放徽章 <badge html>`, `卡点: 选收入/经营数据`.
