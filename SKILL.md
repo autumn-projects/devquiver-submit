@@ -11,12 +11,14 @@ The submission is made on the user's behalf and is public. Treat the final click
 
 ## Before you start
 
-1. Confirm the devquiver MCP tools are available. If not, tell the user to connect it:
-   `claude mcp add --transport http devquiver https://www.devquiver.app/api/mcp --header "Authorization: Bearer <token>"`
-   (token from the workspace → MCP page; it needs **write** permission or `record_submission` will fail with 403).
+1. Confirm the devquiver MCP tools are available. If not, tell the user to connect the remote MCP server `https://www.devquiver.app/api/mcp` with the header `Authorization: Bearer <token>` (token from the workspace → MCP page; it needs **write** permission or `record_submission` will fail with 403). The exact command depends on the agent:
+   - Claude Code: `claude mcp add --transport http devquiver https://www.devquiver.app/api/mcp --header "Authorization: Bearer <token>"`
+   - Codex: in `~/.codex/config.toml` add `[mcp_servers.devquiver]` with `url = "https://www.devquiver.app/api/mcp"` and `bearer_token_env_var = "DEVQUIVER_TOKEN"`, then set that environment variable.
+   - WorkBuddy and other JSON-config clients: add `"devquiver": { "url": "https://www.devquiver.app/api/mcp", "headers": { "Authorization": "Bearer <token>" } }` under `mcpServers` (WorkBuddy: `~/.workbuddy/mcp.json`), then enable it.
+   Never ask the user to paste the token into the chat; they put it in their own config.
 2. `list_pages` → pick the page (a tool page URL, not necessarily the homepage). If several, ask which.
 3. `get_copy_kit` for that page. If name / tagline / descriptions are empty, ask the user to fill them in the workspace first — never invent copy.
-4. Browser access: you need a browser tool that can open pages and fill forms. Check you can reach the target site.
+4. Browser access: you need a browser tool that can open pages, click and fill forms (e.g. Claude in Chrome, a Playwright/Chrome DevTools MCP server, or the agent's built-in browser). If the agent has none, you can still pick directories, prepare the copy for each form and record results, while the user does the clicking. Check you can reach the target site.
 
 ## Two modes · 两种模式
 

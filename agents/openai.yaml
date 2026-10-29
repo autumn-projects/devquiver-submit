@@ -1,0 +1,8 @@
+interface:
+  display_name: "DevQuiver Submit"
+  short_description: "Submit your product to backlink directories, one at a time, and record what happened"
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "devquiver"

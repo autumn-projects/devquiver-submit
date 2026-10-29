@@ -1,8 +1,8 @@
 # devquiver-submit
 
-A Claude Code skill for submitting your product to backlink directories with an AI agent — honestly, one directory at a time.
+An agent skill (Claude Code · Codex · WorkBuddy) for submitting your product to backlink directories with an AI agent — honestly, one directory at a time.
 
-一个 Claude Code skill：让 AI 帮你一个个提交外链目录，并如实记录结果。
+一个 agent skill（Claude Code · Codex · WorkBuddy）：让 AI 帮你一个个提交外链目录，并如实记录结果。
 
 Lets an AI agent work through your backlink to-do list: take the next directory from [devquiver](https://www.devquiver.app), fill its submission form from your copy kit, stop whenever a human is needed (CAPTCHA, account creation, email codes, payment), and write back what actually happened.
 
@@ -10,21 +10,57 @@ Lets an AI agent work through your backlink to-do list: take the next directory 
 
 ## Install · 安装
 
-1. Connect the MCP server (token from the workspace → MCP page, **with write permission**):
+Works with **Claude Code**, **OpenAI Codex** and **Tencent WorkBuddy**: they all read the same `SKILL.md`. You need two things: the devquiver MCP server connected, and this folder in the agent's skills directory.
 
-   ```
-   claude mcp add --transport http devquiver https://www.devquiver.app/api/mcp --header "Authorization: Bearer <your-token>"
-   ```
+支持 Claude Code、OpenAI Codex、腾讯 WorkBuddy，三者读同一份 `SKILL.md`。需要两步：接入 devquiver 的 MCP，把本目录放进对应的 skills 目录。
 
-2. Clone into your skills directory:
+Get a token from the devquiver workspace → MCP page, **with write permission**. 在 devquiver 工作台 → MCP 页生成 token，**勾选写权限**。
 
-   ```
-   git clone https://github.com/autumn-projects/devquiver-submit ~/.claude/skills/devquiver-submit
-   ```
+### Claude Code
 
-   (or into a project's `.claude/skills/`).
-3. Add a site and a page in the workspace, and fill in its copy kit (name, tagline, descriptions).
-4. Ask: "Submit my page to the next 5 directories."
+```
+claude mcp add --transport http devquiver https://www.devquiver.app/api/mcp --header "Authorization: Bearer <your-token>"
+git clone https://github.com/autumn-projects/devquiver-submit ~/.claude/skills/devquiver-submit
+```
+
+### OpenAI Codex
+
+Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.devquiver]
+url = "https://www.devquiver.app/api/mcp"
+bearer_token_env_var = "DEVQUIVER_TOKEN"
+```
+
+Set `DEVQUIVER_TOKEN` in your environment, then:
+
+```
+git clone https://github.com/autumn-projects/devquiver-submit ~/.agents/skills/devquiver-submit
+```
+
+### WorkBuddy
+
+Add to `~/.workbuddy/mcp.json` (or Connectors → custom MCP), then turn it on under My MCP:
+
+```json
+{
+  "mcpServers": {
+    "devquiver": {
+      "url": "https://www.devquiver.app/api/mcp",
+      "headers": { "Authorization": "Bearer <your-token>" }
+    }
+  }
+}
+```
+
+Put this folder at `~/.workbuddy/skills/devquiver-submit/` and restart WorkBuddy. Custom skills and MCP may need WorkBuddy's paid/enterprise plan.
+
+### Then · 然后
+
+1. Add a site and a page in the workspace, and fill in its copy kit (name, tagline, descriptions).
+2. Give the agent a browser tool (Claude in Chrome, a Playwright / Chrome DevTools MCP server, or its built-in browser). Without one it can still pick directories and prepare the copy while you do the clicking.
+3. Ask: "Submit my page to the next 5 directories."
 
 ## What it uses · 用到的 MCP 工具
 
