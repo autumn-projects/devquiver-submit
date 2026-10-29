@@ -51,6 +51,7 @@ Ask the user which mode they want if they haven't said. Most sessions alternate:
    - Website / URL field = the page URL the user chose.
    - Use only facts from the copy kit. Don't invent founding dates, social handles, pricing, user counts. Leave optional fields blank rather than guess.
    - Don't put numbers that go stale (credit counts, prices) in descriptions.
+   - File uploads: before setting a file, identify each `input[type=file]` by its label (logo, screenshot, cover…). Pages often have other file inputs (profile avatar, account photo) — never upload by position. Square image → logo, landscape → screenshot/cover.
    - Respect length limits; shorten the short description rather than truncating mid-word.
    - Read each value back after typing. Some React/Framer inputs drop characters (e.g. `/`) or autoscroll; fill one field at a time, then verify. If typing fails, set the value through the page's own input events rather than retrying blindly.
 5. **Before the final submit, show the user a summary** (directory, URL, the key fields) and ask to proceed — unless they've explicitly told you to run unattended.
