@@ -16,6 +16,7 @@ The submission is made on the user's behalf and is public. Treat the final click
    - Codex: in `~/.codex/config.toml` add `[mcp_servers.devquiver]` with `url = "https://www.devquiver.app/api/mcp"` and `bearer_token_env_var = "DEVQUIVER_TOKEN"`, then set that environment variable.
    - WorkBuddy and other JSON-config clients: add `"devquiver": { "url": "https://www.devquiver.app/api/mcp", "headers": { "Authorization": "Bearer <token>" } }` under `mcpServers` (WorkBuddy: `~/.workbuddy/mcp.json`), then enable it.
    Never ask the user to paste the token into the chat; they put it in their own config.
+   Tool definitions are cached when the session starts. If a tool or parameter described here is missing (for example `import_directory` or `automatable_only`), the server was probably updated after the session began: ask the user to reconnect the MCP server (`/mcp`) rather than assuming it doesn't exist.
 2. `list_pages` → pick the page (a tool page URL, not necessarily the homepage). If several, ask which.
 3. `get_copy_kit` for that page. If name / tagline / descriptions are empty, ask the user to fill them in the workspace first — never invent copy.
 4. Browser access: you need a browser tool that can open pages, click and fill forms (e.g. Claude in Chrome, a Playwright/Chrome DevTools MCP server, or the agent's built-in browser). If the agent has none, you can still pick directories, prepare the copy for each form and record results, while the user does the clicking. Check you can reach the target site.
@@ -26,6 +27,7 @@ Ask the user which mode they want if they haven't said. Most sessions alternate:
 
 **Autonomous pass (全自动轮)** — the user has said "run unattended" / "don't stop, just record blockers".
 - **Only directories this page has never touched.** `next_directories` returns everything not yet submitted, including ones already recorded for this page as `todo`, `drafting` or `skip`. Before working the list, call `list_submissions` for the page with no status filter and drop **every** directory that has any record for it. An autonomous pass works only on directories with no record at all for this page. Everything already recorded (blocked, half-filled, waiting on a badge, retry later) belongs to the collaborative pass, even if you think you could clear it now — say so in the end-of-pass report instead of re-probing.
+- **How `next_directories` picks.** It returns directories with no submission for this page, or only a `todo`/`drafting` one (anything `submitted`, `live`, `rejected` or `skip` is excluded), sorted by an ease score (free, dofollow, no paywall, no login, no badge, high DR and already-verified score higher; paywalls score lower). It returns at most 100 per call and has no offset. Once the top 100 are all already recorded, the rest of the library is unreachable through it. Then, in this order: (1) try filter combinations (`automatable_only`, `verified_only`, `dofollow_only`, `free_only`), which pull different slices; (2) look up specific domains with `get_directory`; (3) discover new directories and add them with `import_directory`. `automatable_only` keeps only directories where every blocker field is already known and clear (free, no paywall, no login or Google only, no badge, no confirmation email, no human check, no personal info); unknown fields don't count, so it can come back empty on a young library.
 - Submit everything you can finish yourself without asking before each final click.
 - Anything that needs a human (login wall you may not pass, CAPTCHA, email code, payment decision, a badge or link that must go on the user's site first) is **not a reason to stop the session**: record it as `drafting` with a note that says exactly what is needed and where, then move to the next directory.
 - Write notes so the collaborative pass can batch them: start with the blocker type, e.g. `卡点: Cloudflare 验证`, `卡点: 需登录`, `卡点: 需放徽章 <badge html>`, `卡点: 选收入/经营数据`.
@@ -58,6 +60,28 @@ Ask the user which mode they want if they haven't said. Most sessions alternate:
 6. After submitting, look for a real confirmation (success message, queue notice, email prompt). A button that does nothing is *not* success: check the network tab / console for failed requests before claiming anything.
 7. `record_submission` (see below), then the next directory.
 
+## Triage before opening a browser
+
+Browser time is the expensive part. For a batch of unfamiliar directories, first fetch each submit page over plain HTTP and check for a form, a login wall, prices, "no longer free" wording and CAPTCHA widgets, then open only the ones that look free and open. Pages that render their form with JavaScript will look empty over HTTP: treat that as "unknown", not "no form".
+
+## Common blockers (record them the same way every time)
+
+- **Long-description minimums** (300, 500 or 1500+ characters) when the copy kit's long text is shorter: don't pad or invent. Record `卡点: 需文案` with the minimum, and ask the user to approve an expanded text. A draft built only from facts already in the copy kit or the user's own docs is fine to prepare, but not to submit without approval.
+- **Homepage-only sites** (the first step rejects any inner page): if the user's rule is "always submit the specific page", don't switch to the homepage on your own. Record it and ask for an exception. Sites on the same template usually share the limit.
+- **Paid in disguise:** "we no longer offer free submissions", a minimum payment, a non-refundable fee, or a pre-selected paid tier. Record `skip` with the price in `note`; never click a pay button.
+- **Wrong category for the product** (GPT stores, AI writing tools, lifetime-deal software, review collectors): `skip` with the reason in `note` only.
+- **Unlock-by-participation gates** (upvote N tools, post a comment): upvotes the user has pre-approved are fine; a public comment is posted under the user's name and needs their explicit go-ahead.
+- **Human-only checks:** Cloudflare Turnstile, Clerk-hosted login, popup-window login (the popup isn't in the tab group), emailed magic links, and Google's own passkey or code verification.
+
+## Browser gotchas
+
+- Google consent pages have two unnamed buttons. Read their text with a small script first (for example `取消 | 继续`), then click the confirm one.
+- A Google sign-in that asks for a passkey or verification code is identity verification: only the user can do it. After they complete it, other sites in the same browser session usually sign in without it again.
+- Custom checkboxes may ignore a click on the element reference. Click the label by coordinate and read the state back before continuing.
+- Use form-fill for ordinary inputs and textareas; type only into rich-text editors, and look at the result afterwards.
+- After navigating, the tab title and URL can lag behind. Wait, then read the tab state again.
+- If the extension disconnects, the tab group may be gone and form data with it. Recreate the tab group and refill.
+
 ## Stop and hand back to the human
 
 Never do these yourself — stop, record a blocker, and tell the user exactly what is needed:
@@ -74,7 +98,7 @@ If a form needs the user (login wall, verification), save progress as `drafting`
 ## Recording results (`record_submission`)
 
 - `status`:
-  - `submitted` — you clicked submit and saw a confirmation, or it's queued for review.
+  - `submitted` — you clicked submit and saw a confirmation, or it's queued for review. If the form just cleared or the button greyed out but no message ever appeared, you may still record `submitted`, but say "unconfirmed" in `note` so nobody treats it as verified.
   - `drafting` — filled but blocked (needs email confirmation, login, votes, human check). Put the blocker in `note`.
   - `live` — **only** after you've opened the public listing and confirmed it's up with a link to the user. Never mark `live` on a guess.
   - `rejected` — the directory said no.
